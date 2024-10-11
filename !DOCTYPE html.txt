@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game with Purple Snake, Pink Foods, and Yellow Obstacles</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            background-color: #333;
+            border: 10px solid #222;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        #game-board {
+            width: 100%;
+            height: 100%;
+        }
+        .snake-part {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #9C27B0;
+            border-radius: 50%;
+        }
+        .food {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #FF4081;
+            border-radius: 50%;
+        }
+        .obstacle {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #FFEB3B;
+            border-radius: 5px;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+        }
+        #start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-board"></div>
+        <div id="score">Score: 0</div>
+        <div id="start-message">Press SPACE to start<br>Use WASD to move</div>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const scoreElement = document.getElementById('score');
+        const startMessage = document.getElementById('start-message');
+        const boardSize = 600;
+        const gridSize = 20;
+        const snake = [{x: 300, y: 300}];
+        let foods = [];
+        let direction = '';
+        let gameLoop;
+        let score = 0;
+        const obstacles = [
+            {x: 100, y: 100},
+            {x: 300, y: 300},
+            {x: 500, y: 500}
+        ];
+
+        function start() {
+            snake.length = 1;
+            snake[0] = {x: 300, y: 300};
+            score = 0;
+            updateScore();
+            createFoods();
+            direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, 100);
+            startMessage.style.display = 'none';
+            drawObstacles();
+        }
+
+        function update() {
+            const head = Object.assign({}, snake[0]);
+
+            switch (direction) {
+                case 'up': head.y -= gridSize; break;
+                case 'down': head.y += gridSize; break;
+                case 'left': head.x -= gridSize; break;
+                case 'right': head.x += gridSize; break;
+            }
+
+            if (head.x < 0 || head.x >= boardSize || head.y < 0 || head.y >= boardSize || 
+                collision(head) || obstacleCollision(head)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            const eatenFoodIndex = foods.findIndex(food => head.x === food.x && head.y === food.y);
+            if (eatenFoodIndex !== -1) {
+                score++;
+                updateScore();
+                foods.splice(eatenFoodIndex, 1);
+                createFood();
+            } else {
+                snake.pop();
+            }
+
+            draw();
+        }
+
+        function collision(head) {
+            return snake.some((part, index) => index !== 0 && part.x === head.x && part.y === head.y);
+        }
+
+        function obstacleCollision(head) {
+            return obstacles.some(obstacle => 
+                head.x < obstacle.x + 40 &&
+                head.x + gridSize > obstacle.x &&
+                head.y < obstacle.y + 40 &&
+                head.y + gridSize > obstacle.y
+            );
+        }
+
+        function createFoods() {
+            foods = [];
+            for (let i = 0; i < 2; i++) {
+                createFood();
+            }
+        }
+
+        function createFood() {
+            let newFood;
+            do {
+                newFood = {
+                    x: Math.floor(Math.random() * (boardSize / gridSize)) * gridSize,
+                    y: Math.floor(Math.random() * (boardSize / gridSize)) * gridSize
+                };
+            } while (
+                snake.some(part => part.x === newFood.x && part.y === newFood.y) ||
+                obstacles.some(obstacle => 
+                    newFood.x >= obstacle.x && newFood.x < obstacle.x + 40 &&
+                    newFood.y >= obstacle.y && newFood.y < obstacle.y + 40
+                ) ||
+                foods.some(food => food.x === newFood.x && food.y === newFood.y)
+            );
+            foods.push(newFood);
+        }
+
+        function draw() {
+            gameBoard.innerHTML = '';
+            snake.forEach((part, index) => {
+                const snakePart = document.createElement('div');
+                snakePart.className = 'snake-part';
+                snakePart.style.left = `${part.x}px`;
+                snakePart.style.top = `${part.y}px`;
+                if (index === 0) {
+                    snakePart.style.backgroundColor = '#BA68C8';
+                    snakePart.style.boxShadow = '0 0 10px #E1BEE7';
+                }
+                gameBoard.appendChild(snakePart);
+            });
+
+            foods.forEach(food => {
+                const foodElement = document.createElement('div');
+                foodElement.className = 'food';
+                foodElement.style.left = `${food.x}px`;
+                foodElement.style.top = `${food.y}px`;
+                gameBoard.appendChild(foodElement);
+            });
+
+            drawObstacles();
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                const obstacleElement = document.createElement('div');
+                obstacleElement.className = 'obstacle';
+                obstacleElement.style.left = `${obstacle.x}px`;
+                obstacleElement.style.top = `${obstacle.y}px`;
+                gameBoard.appendChild(obstacleElement);
+            });
+        }
+
+        function gameOver() {
+            clearInterval(gameLoop);
+            startMessage.innerHTML = `Game Over!<br>Score: ${score}<br>Press SPACE to restart`;
+            startMessage.style.display = 'block';
+        }
+
+        function updateScore() {
+            scoreElement.textContent = `Score: ${score}`;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.key.toLowerCase()) {
+                case 'w': if (direction !== 'down') direction = 'up'; break;
+                case 'a': if (direction !== 'right') direction = 'left'; break;
+                case 's': if (direction !== 'up') direction = 'down'; break;
+                case 'd': if (direction !== 'left') direction = 'right'; break;
+                case ' ': start(); break;
+            }
+        });
+    </script>
+</body>
+</html>
